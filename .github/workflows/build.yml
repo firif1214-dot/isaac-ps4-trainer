@@ -1,0 +1,22 @@
+name: Build PS4 PRX Plugin
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: openorbis/ps4-toolchain:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build with Make
+        run: make
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: isaac_trainer_prx
+          path: isaac_trainer.prx
