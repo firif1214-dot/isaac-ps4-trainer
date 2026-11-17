@@ -10,17 +10,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Dependencies & Build
+      - name: Setup OpenOrbis Toolchain
         run: |
-          # Клонируем тулчейн OpenOrbis
-          git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/toolchain
-          
-          # Компилируем с правильным путем к заголовкам из папки include тулчейна
-          g++ -O3 -Wall -fPIC -shared \
-            -I/tmp/toolchain/include \
-            main.cpp -o isaac_trainer.prx
+          # Клонируем официальный тулчейн OpenOrbis в системную папку
+          git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /opt/openorbis
+          echo "OO_PS4_TOOLCHAIN=/opt/openorbis" >> $GITHUB_ENV
+          echo "/opt/openorbis/bin" >> $GITHUB_PATH
 
-          ls -la isaac_trainer.prx
+      - name: Build with Make
+        run: make
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
