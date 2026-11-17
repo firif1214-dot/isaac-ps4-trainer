@@ -12,16 +12,14 @@ jobs:
 
       - name: Install Dependencies & Build
         run: |
-          # Клонируем заголовки и тулчейн OpenOrbis
-          git clone https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/toolchain
+          # Клонируем тулчейн OpenOrbis
+          git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/toolchain
           
-          # Компилируем main.cpp с указанием путей к заголовочным файлам OpenOrbis
+          # Компилируем с правильным путем к заголовкам из папки include тулчейна
           g++ -O3 -Wall -fPIC -shared \
             -I/tmp/toolchain/include \
-            -I/tmp/toolchain/include/orbis \
-            main.cpp -o isaac_trainer.prx || true
+            main.cpp -o isaac_trainer.prx
 
-          # Проверим, собрался ли файл
           ls -la isaac_trainer.prx
 
       - name: Upload Artifact
