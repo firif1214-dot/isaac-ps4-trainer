@@ -1,6 +1,6 @@
 name: Build PS4 PRX Plugin
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -10,15 +10,55 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup OpenOrbis Toolchain
+      - name: Set up OpenOrbis Toolchain
         run: |
-          # Клонируем официальный тулчейн OpenOrbis в системную папку
+          echo "=== 1. Клонирование тулчейна OpenOrbis ==/usr/bin/git"
           git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /opt/openorbis
+          
+          if [ ! -d "/opt/openorbis" ]; then
+            echo "::error::Не удалось клонировать репозиторий тулчейна!"
+            exit 1
+          fi
+
+          echo "=== 2. Настройка путей окружения ==="
           echo "OO_PS4_TOOLCHAIN=/opt/openorbis" >> $GITHUB_ENV
           echo "/opt/openorbis/bin" >> $GITHUB_PATH
+          
+          # Проверяем наличие компилятора oo-clang++
+          if [ -f "/opt/openorbis/bin/oo-clang++" ]; then
+            echo "Компилятор найден успешно!"
+            /opt/openorbis/bin/oo-clang++ --version
+          else
+            echo "::warning::oo-clang++ не найден в bin, ищем в корне тулчейна..."
+            find /opt/openorbis -name "oo-clang++"
+          fi
 
-      - name: Build with Make
-        run: make
+      - name: Build with Make or Direct Compiler
+        run: |
+          echo "=== 3. Проверка файлов в проекте ==="
+          ls -la
+          
+          echo "=== 4. Запуск компиляции PRX ==="
+          # Проверяем, есть ли Makefile, если нет - собираем напрямую через oo-clang++
+          if [ -f "Makefile" ]; then
+            echo "Используем существующий Makefile..."
+            make || { echo "::error::Ошибка при выполнении make!"; exit 1; }
+          else
+            echo "Makefile не найден, компилируем напрямую..."
+            oo-clang++ -O3 -Wall -fPIC -shared main.cpp -o isaac_trainer.prx || \
+            clang++ -O3 -Wall -fPIC -shared -I/opt/openorbis/include main.cpp -o isaac_trainer.prx
+          fi
+
+      - name: Verify Artifact Existence
+        run: |
+          echo "=== 5. Проверка собранного файла ==="
+          if [ -f "isaac_trainer.prx" ]; then
+            echo "Файл isaac_trainer.prx успешно создан!"
+            ls -lh isaac_trainer.prx
+          else
+            echo "::error::Файл isaac_trainer.prx отсутствует после сборки!"
+            exit 1
+          fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
