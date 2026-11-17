@@ -10,10 +10,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build with Make
+      - name: Install Dependencies & Build
         run: |
-          # Компилируем напрямую как разделяемую библиотеку под ELF/PS4
-          gcc -O3 -Wall -fPIC -shared -nostdlib -o isaac_trainer.prx main.cpp || g++ -O3 -Wall -fPIC -shared -nostdlib -o isaac_trainer.prx main.cpp
+          # Клонируем заголовки и тулчейн OpenOrbis
+          git clone https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/toolchain
+          
+          # Компилируем main.cpp с указанием путей к заголовочным файлам OpenOrbis
+          g++ -O3 -Wall -fPIC -shared \
+            -I/tmp/toolchain/include \
+            -I/tmp/toolchain/include/orbis \
+            main.cpp -o isaac_trainer.prx || true
+
+          # Проверим, собрался ли файл
+          ls -la isaac_trainer.prx
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
