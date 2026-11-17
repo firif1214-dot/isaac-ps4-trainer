@@ -12,51 +12,48 @@ jobs:
 
       - name: Set up OpenOrbis Toolchain
         run: |
-          echo "=== 1. Клонирование тулчейна OpenOrbis ==/usr/bin/git"
+          echo "=== 1. Клонирование тулчейна OpenOrbis ==="
           git clone --depth 1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /opt/openorbis
           
           if [ ! -d "/opt/openorbis" ]; then
-            echo "::error::Не удалось клонировать репозиторий тулчейна!"
+            echo "::error::Не удалось клонировать тулчейн OpenOrbis!"
             exit 1
           fi
 
-          echo "=== 2. Настройка путей окружения ==="
           echo "OO_PS4_TOOLCHAIN=/opt/openorbis" >> $GITHUB_ENV
           echo "/opt/openorbis/bin" >> $GITHUB_PATH
-          
-          # Проверяем наличие компилятора oo-clang++
+
+          echo "=== 2. Строгая проверка компилятора ==="
           if [ -f "/opt/openorbis/bin/oo-clang++" ]; then
-            echo "Компилятор найден успешно!"
+            chmod +x /opt/openorbis/bin/oo-clang++
+            echo "Компилятор найден!"
             /opt/openorbis/bin/oo-clang++ --version
           else
-            echo "::warning::oo-clang++ не найден в bin, ищем в корне тулчейна..."
-            find /opt/openorbis -name "oo-clang++"
+            echo "::error::Критическая ошибка: oo-clang++ не найден в тулчейне!"
+            exit 1
           fi
 
-      - name: Build with Make or Direct Compiler
+      - name: Compile PRX Plugin
         run: |
-          echo "=== 3. Проверка файлов в проекте ==="
-          ls -la
+          echo "=== 3. Запуск компиляции через oo-clang++ ==="
+          export OO_PS4_TOOLCHAIN=/opt/openorbis
           
-          echo "=== 4. Запуск компиляции PRX ==="
-          # Проверяем, есть ли Makefile, если нет - собираем напрямую через oo-clang++
-          if [ -f "Makefile" ]; then
-            echo "Используем существующий Makefile..."
-            make || { echo "::error::Ошибка при выполнении make!"; exit 1; }
-          else
-            echo "Makefile не найден, компилируем напрямую..."
-            oo-clang++ -O3 -Wall -fPIC -shared main.cpp -o isaac_trainer.prx || \
-            clang++ -O3 -Wall -fPIC -shared -I/opt/openorbis/include main.cpp -o isaac_trainer.prx
+          # Собираем напрямую через обертку OpenOrbis, гарантируя правильные ключи для PRX
+          /opt/openorbis/bin/oo-clang++ -O3 -Wall -fPIC -shared main.cpp -o isaac_trainer.prx
+          
+          if [ $? -ne 0 ]; then
+            echo "::error::Компиляция завершилась с ошибкой!"
+            exit 1
           fi
 
       - name: Verify Artifact Existence
         run: |
-          echo "=== 5. Проверка собранного файла ==="
+          echo "=== 4. Проверка готового файла ==="
           if [ -f "isaac_trainer.prx" ]; then
             echo "Файл isaac_trainer.prx успешно создан!"
             ls -lh isaac_trainer.prx
           else
-            echo "::error::Файл isaac_trainer.prx отсутствует после сборки!"
+            echo "::error::Файл isaac_trainer.prx отсутствует!"
             exit 1
           fi
 
